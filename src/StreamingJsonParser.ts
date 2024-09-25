@@ -1,27 +1,16 @@
 import { EventEmitter } from 'events';
 import { Writable } from 'stream';
-import { ParserStatistics, ParserStats } from './utils/statistics';
-import { validateAgainstSchema, SchemaNode } from './utils/schemaValidator';
-
-export type JsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | JsonObject
-  | JsonArray;
-export interface JsonObject {
-  [key: string]: JsonValue;
-}
-export interface JsonArray extends Array<JsonValue> {}
-
-export interface ParserOptions {
-  maxDepth?: number;
-  maxStringLength?: number;
-  allowComments?: boolean;
-  reviver?: (key: string, value: any) => any;
-  outputStream?: Writable;
-}
+import { ParserStatistics } from './utils/statistics';
+import { validateAgainstSchema } from './utils/schemaValidator';
+import {
+  JsonValue,
+  JsonObject,
+  JsonArray,
+  ParserOptions,
+  ParserStats,
+  SchemaNode,
+  ParserEvents
+} from './types';
 
 export class StreamingJsonParser extends EventEmitter {
   private statistics: ParserStatistics;
@@ -63,7 +52,7 @@ export class StreamingJsonParser extends EventEmitter {
       this.parseBuffer();
       const result = this.getCurrentJson();
       this.emit("data", result);
-    } catch (error) {
+    } catch (error:any) {
       this.emit("error", error);
     }
   }
@@ -238,6 +227,14 @@ export class StreamingJsonParser extends EventEmitter {
 
   validateAgainstSchema(schema: SchemaNode): boolean {
     return validateAgainstSchema(this.getCurrentJson(), schema);
+  }
+  
+  on<E extends keyof ParserEvents>(event: E, listener: ParserEvents[E]): this {
+    return super.on(event, listener);
+  }
+
+  emit<E extends keyof ParserEvents>(event: E, ...args: Parameters<ParserEvents[E]>): boolean {
+    return super.emit(event, ...args);
   }
 
   end() {

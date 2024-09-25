@@ -1,12 +1,4 @@
-export interface ParserStats {
-  depth: number;
-  objectCount: number;
-  arrayCount: number;
-  stringCount: number;
-  numberCount: number;
-  booleanCount: number;
-  nullCount: number;
-}
+import { ParserStats } from '../types';
 
 export class ParserStatistics implements ParserStats {
   depth: number = 0;
@@ -18,6 +10,7 @@ export class ParserStatistics implements ParserStats {
   nullCount: number = 0;
 
   private currentDepth: number = 0;
+  
 
   reset(): void {
     this.depth = 0;

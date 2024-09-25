@@ -1,21 +1,9 @@
-import { JsonValue } from '../StreamingJsonParser';
+import { JsonValue, SchemaNode } from '../types';
 
-export interface SchemaNode {
-  type: string | string[];
-  properties?: { [key: string]: SchemaNode };
-  items?: SchemaNode | SchemaNode[];
-  required?: string[];
-  enum?: JsonValue[];
-  minimum?: number;
-  maximum?: number;
-  minLength?: number;
-  maxLength?: number;
-  pattern?: string;
-  additionalProperties?: boolean | SchemaNode;
-}
+
 
 export function validateAgainstSchema(data: JsonValue, schema: SchemaNode): boolean {
-  // Type validation
+    // Type validation
   if (Array.isArray(schema.type)) {
     if (!schema.type.some(type => validateType(data, type))) {
       return false;
@@ -128,7 +116,7 @@ export function validateAgainstSchema(data: JsonValue, schema: SchemaNode): bool
 }
 
 function validateType(data: JsonValue, type: string): boolean {
-  switch (type) {
+    switch (type) {
     case 'string':
       return typeof data === 'string';
     case 'number':

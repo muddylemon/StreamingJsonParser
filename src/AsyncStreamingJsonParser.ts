@@ -1,4 +1,5 @@
-import { StreamingJsonParser, ParserOptions } from "./StreamingJsonParser";
+import { ParserOptions } from "./types";
+import { StreamingJsonParser } from "./StreamingJsonParser";
 
 export class AsyncStreamingJsonParser extends StreamingJsonParser {
   private parsePromise: Promise<void> | null = null;
