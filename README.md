@@ -26,15 +26,15 @@ npm install streaming-json-parser
 ### Synchronous Parsing
 
 ```javascript
-const { StreamingJsonParser } = require('streaming-json-parser');
-const { Writable } = require('stream');
+const { StreamingJsonParser } = require("streaming-json-parser");
+const { Writable } = require("stream");
 
 // Create a custom output stream
 const outputStream = new Writable({
   write(chunk, encoding, callback) {
-    console.log('Parsed chunk:', chunk.toString());
+    console.log("Parsed chunk:", chunk.toString());
     callback();
-  }
+  },
 });
 
 // Initialize the parser
@@ -42,20 +42,20 @@ const parser = new StreamingJsonParser({
   outputStream,
   maxDepth: 5,
   allowComments: true,
-  reviver: (key, value) => key === 'date' ? new Date(value) : value
+  reviver: (key, value) => (key === "date" ? new Date(value) : value),
 });
 
 // Set up event listeners
-parser.on('data', (data) => console.log('Parsed data:', data));
-parser.on('error', (error) => console.error('Parsing error:', error));
-parser.on('end', () => console.log('Parsing completed'));
+parser.on("data", (data) => console.log("Parsed data:", data));
+parser.on("error", (error) => console.error("Parsing error:", error));
+parser.on("end", () => console.log("Parsing completed"));
 
 // Process JSON data
 parser.process('{"name": "John", "age": 30}');
 parser.process('"hobbies": ["reading", "cycling"]}');
 
 // Get parsing statistics
-console.log('Parsing statistics:', parser.getStats());
+console.log("Parsing statistics:", parser.getStats());
 
 // End parsing
 parser.end();
@@ -64,20 +64,20 @@ parser.end();
 ### Asynchronous Parsing
 
 ```javascript
-const { AsyncStreamingJsonParser } = require('streaming-json-parser');
-const { createWriteStream } = require('fs');
+const { AsyncStreamingJsonParser } = require("streaming-json-parser");
+const { createWriteStream } = require("fs");
 
 async function parseJsonAsync() {
-  const outputStream = createWriteStream('output.json');
+  const outputStream = createWriteStream("output.json");
   const parser = new AsyncStreamingJsonParser({
     outputStream,
-    allowComments: true
+    allowComments: true,
   });
 
-  parser.on('data', (data) => console.log('Parsed data:', data));
-  parser.on('error', (error) => console.error('Parsing error:', error));
-  parser.on('end', () => console.log('Parsing completed'));
-  parser.on('chunkProcessed', () => console.log('Chunk processed'));
+  parser.on("data", (data) => console.log("Parsed data:", data));
+  parser.on("error", (error) => console.error("Parsing error:", error));
+  parser.on("end", () => console.log("Parsing completed"));
+  parser.on("chunkProcessed", () => console.log("Chunk processed"));
 
   try {
     await parser.process('{"users": [');
@@ -85,12 +85,12 @@ async function parseJsonAsync() {
     await parser.process('{"name": "Bob", "age": 32}');
     await parser.process(']}');
 
-    console.log('Final parsed JSON:', parser.getCurrentJson());
-    console.log('Parsing statistics:', parser.getStats());
+    console.log("Final parsed JSON:", parser.getCurrentJson());
+    console.log("Parsing statistics:", parser.getStats());
 
     await parser.endAsync();
   } catch (error) {
-    console.error('Error during async parsing:', error);
+    console.error("Error during async parsing:", error);
   }
 }
 
