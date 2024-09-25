@@ -1,4 +1,4 @@
-const { AsyncStreamingJsonParser } = require("../src/AsyncStreamingJsonParser");
+const { AsyncStreamingJsonParser } = require("../dist/AsyncStreamingJsonParser");
 const { createWriteStream } = require("fs");
 
 async function parseJsonAsync() {

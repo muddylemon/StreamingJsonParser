@@ -18,16 +18,18 @@ export class StreamingJsonParser extends EventEmitter {
   protected stack: (JsonObject | JsonArray)[] = [];
   protected currentKey: string | null = null;
   protected isInString: boolean = false;
+  protected stringBuffer: string = "";
   protected isEscaped: boolean = false;
   protected outputStream: Writable | null = null;
   protected isFirstWrite: boolean = true;
   protected options: ParserOptions;
+  protected isComplete: boolean = false;
+  protected rootObject: JsonObject = {};
 
   constructor(options: ParserOptions = {}) {
     super();
     this.options = {
       maxDepth: options.maxDepth || Infinity,
-      maxStringLength: options.maxStringLength || Infinity,
       allowComments: options.allowComments || false,
       reviver: options.reviver,
       outputStream: options.outputStream,
@@ -50,8 +52,6 @@ export class StreamingJsonParser extends EventEmitter {
       }
       this.buffer += chunk;
       this.parseBuffer();
-      const result = this.getCurrentJson();
-      this.emit("data", result);
     } catch (error:any) {
       this.emit("error", error);
     }
@@ -64,7 +64,10 @@ export class StreamingJsonParser extends EventEmitter {
       if (this.isInString) {
         if (char === '"' && !this.isEscaped) {
           this.isInString = false;
-          this.addValue(this.buffer.substring(1, i));
+          this.addValue(this.stringBuffer);
+          this.stringBuffer = "";
+        } else {
+          this.stringBuffer += char;
         }
         this.isEscaped = char === "\\" && !this.isEscaped;
       } else {
@@ -87,8 +90,6 @@ export class StreamingJsonParser extends EventEmitter {
             break;
           case '"':
             this.isInString = true;
-            this.buffer = this.buffer.slice(i);
-            i = 0;
             break;
           case " ":
           case "\n":
@@ -107,13 +108,15 @@ export class StreamingJsonParser extends EventEmitter {
     }
 
     // Clear processed data from buffer
-    this.buffer = this.isInString ? '"' + this.buffer : "";
+    this.buffer = "";
   }
 
   protected startObject() {
     this.checkDepth();
     this.writeToStream("{");
-    this.stack.push({});
+    const newObject = {};
+    this.addValue(newObject);
+    this.stack.push(newObject);
     this.statistics.incrementDepth();
     this.statistics.incrementObject();
   }
@@ -121,18 +124,20 @@ export class StreamingJsonParser extends EventEmitter {
   protected startArray() {
     this.checkDepth();
     this.writeToStream("[");
-    this.stack.push([]);
+    const newArray: JsonArray = [];
+    this.addValue(newArray);
+    this.stack.push(newArray);
     this.statistics.incrementDepth();
     this.statistics.incrementArray();
   }
 
   protected endContainer() {
-    const container = this.stack.pop();
-    if (Array.isArray(container)) {
-      this.writeToStream("]");
-    } else {
-      this.writeToStream("}");
+    const completedContainer = this.stack.pop();
+    if (this.stack.length === 0) {
+      this.isComplete = true;
+      this.rootObject = completedContainer as JsonObject;
     }
+    this.writeToStream(completedContainer instanceof Array ? "]" : "}");
     this.statistics.decrementDepth();
   }
 
@@ -152,7 +157,10 @@ export class StreamingJsonParser extends EventEmitter {
     }
 
     if (this.stack.length === 0) {
-      this.writeToStream(JSON.stringify(value));
+      if (this.currentKey !== null) {
+        this.rootObject[this.currentKey] = value;
+        this.currentKey = null;
+      }
     } else {
       const current = this.stack[this.stack.length - 1];
       if (Array.isArray(current)) {
@@ -161,16 +169,17 @@ export class StreamingJsonParser extends EventEmitter {
         }
         this.writeToStream(JSON.stringify(value));
         current.push(value);
-      } else if (this.currentKey !== null) {
-        if (Object.keys(current).length > 0) {
-          this.writeToStream(",");
+      } else {
+        if (this.currentKey !== null) {
+          if (Object.keys(current).length > 0) {
+            this.writeToStream(",");
+          }
+          this.writeToStream(`${JSON.stringify(this.currentKey)}:${JSON.stringify(value)}`);
+          current[this.currentKey] = value;
+          this.currentKey = null;
+        } else if (typeof value === "string") {
+          this.currentKey = value;
         }
-        this.writeToStream(
-          `${JSON.stringify(this.currentKey)}:${JSON.stringify(value)}`
-        );
-        current[this.currentKey] = value;
-      } else if (typeof value === "string") {
-        this.currentKey = value;
       }
     }
   }
@@ -222,7 +231,7 @@ export class StreamingJsonParser extends EventEmitter {
   }
 
   getCurrentJson(): JsonValue {
-    return this.stack.length > 0 ? this.stack[0] : null;
+    return this.rootObject;
   }
 
   validateAgainstSchema(schema: SchemaNode): boolean {
@@ -241,6 +250,7 @@ export class StreamingJsonParser extends EventEmitter {
     if (this.outputStream) {
       this.outputStream.end();
     }
+    this.emit("data", this.rootObject);
     this.emit("end");
   }
 }

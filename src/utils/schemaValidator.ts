@@ -1,9 +1,7 @@
 import { JsonValue, SchemaNode } from '../types';
 
-
-
 export function validateAgainstSchema(data: JsonValue, schema: SchemaNode): boolean {
-    // Type validation
+  // Type validation
   if (Array.isArray(schema.type)) {
     if (!schema.type.some(type => validateType(data, type))) {
       return false;
@@ -80,16 +78,17 @@ export function validateAgainstSchema(data: JsonValue, schema: SchemaNode): bool
 
   // String validation
   if (schema.type === 'string' || (Array.isArray(schema.type) && schema.type.includes('string'))) {
-    if (typeof data !== 'string') {
+    if (typeof data !== 'string' && !(data instanceof Date)) {
       return false;
     }
-    if (schema.minLength !== undefined && data.length < schema.minLength) {
+    const stringValue = data instanceof Date ? data.toISOString() : data;
+    if (schema.minLength !== undefined && stringValue.length < schema.minLength) {
       return false;
     }
-    if (schema.maxLength !== undefined && data.length > schema.maxLength) {
+    if (schema.maxLength !== undefined && stringValue.length > schema.maxLength) {
       return false;
     }
-    if (schema.pattern && !new RegExp(schema.pattern).test(data)) {
+    if (schema.pattern && !new RegExp(schema.pattern).test(stringValue)) {
       return false;
     }
   }
@@ -116,9 +115,9 @@ export function validateAgainstSchema(data: JsonValue, schema: SchemaNode): bool
 }
 
 function validateType(data: JsonValue, type: string): boolean {
-    switch (type) {
+  switch (type) {
     case 'string':
-      return typeof data === 'string';
+      return typeof data === 'string' || data instanceof Date;
     case 'number':
       return typeof data === 'number';
     case 'boolean':
