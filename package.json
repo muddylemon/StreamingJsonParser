@@ -1,7 +1,7 @@
 {
-  "name": "streamingjsonparser",
+  "name": "@lantzkidwell/streamingjsonparser",
   "version": "1.0.0",
-  "description": "",
+  "description": "StreamingJsonParser is a robust and flexible JSON parsing library for Node.js that supports both synchronous and asynchronous parsing of JSON data streams.",
   "main": "index.js",
   "directories": {
     "example": "examples",
@@ -11,8 +11,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["json","streaming"],
+  "author": "Lantz Kidwell",
   "license": "ISC",
   "devDependencies": {
     "@types/jest": "^29.5.13",
@@ -20,5 +20,8 @@
     "jest": "^29.7.0",
     "ts-jest": "^29.2.5",
     "typescript": "^5.6.2"
+  },
+  "dependencies": {
+    "npm": "^10.8.3"
   }
 }
