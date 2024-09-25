@@ -1,5 +1,7 @@
-import { Writable } from "stream";
-import { EventEmitter } from "events";
+import { EventEmitter } from 'events';
+import { Writable } from 'stream';
+import { ParserStatistics, ParserStats } from './utils/statistics';
+import { validateAgainstSchema, SchemaNode } from './utils/schemaValidator';
 
 export type JsonValue =
   | string
@@ -21,17 +23,8 @@ export interface ParserOptions {
   outputStream?: Writable;
 }
 
-export interface ParserStats {
-  depth: number;
-  objectCount: number;
-  arrayCount: number;
-  stringCount: number;
-  numberCount: number;
-  booleanCount: number;
-  nullCount: number;
-}
-
 export class StreamingJsonParser extends EventEmitter {
+  private statistics: ParserStatistics;
   protected buffer: string = "";
   protected stack: (JsonObject | JsonArray)[] = [];
   protected currentKey: string | null = null;
@@ -40,16 +33,6 @@ export class StreamingJsonParser extends EventEmitter {
   protected outputStream: Writable | null = null;
   protected isFirstWrite: boolean = true;
   protected options: ParserOptions;
-  protected currentDepth: number = 0;
-  protected stats: ParserStats = {
-    depth: 0,
-    objectCount: 0,
-    arrayCount: 0,
-    stringCount: 0,
-    numberCount: 0,
-    booleanCount: 0,
-    nullCount: 0,
-  };
 
   constructor(options: ParserOptions = {}) {
     super();
@@ -63,6 +46,7 @@ export class StreamingJsonParser extends EventEmitter {
     if (this.options.outputStream) {
       this.setOutputStream(this.options.outputStream);
     }
+    this.statistics = new ParserStatistics();
   }
 
   setOutputStream(outputStream: Writable) {
@@ -141,18 +125,16 @@ export class StreamingJsonParser extends EventEmitter {
     this.checkDepth();
     this.writeToStream("{");
     this.stack.push({});
-    this.currentDepth++;
-    this.stats.depth = Math.max(this.stats.depth, this.currentDepth);
-    this.stats.objectCount++;
+    this.statistics.incrementDepth();
+    this.statistics.incrementObject();
   }
 
   protected startArray() {
     this.checkDepth();
     this.writeToStream("[");
     this.stack.push([]);
-    this.currentDepth++;
-    this.stats.depth = Math.max(this.stats.depth, this.currentDepth);
-    this.stats.arrayCount++;
+    this.statistics.incrementDepth();
+    this.statistics.incrementArray();
   }
 
   protected endContainer() {
@@ -162,18 +144,18 @@ export class StreamingJsonParser extends EventEmitter {
     } else {
       this.writeToStream("}");
     }
-    this.currentDepth--;
+    this.statistics.decrementDepth();
   }
 
   protected addValue(value: JsonValue) {
     if (typeof value === "string") {
-      this.stats.stringCount++;
+      this.statistics.incrementString();
     } else if (typeof value === "number") {
-      this.stats.numberCount++;
+      this.statistics.incrementNumber();
     } else if (typeof value === "boolean") {
-      this.stats.booleanCount++;
+      this.statistics.incrementBoolean();
     } else if (value === null) {
-      this.stats.nullCount++;
+      this.statistics.incrementNull();
     }
 
     if (this.options.reviver) {
@@ -241,39 +223,21 @@ export class StreamingJsonParser extends EventEmitter {
   }
 
   protected checkDepth() {
-    if (this.currentDepth >= this.options.maxDepth!) {
+    if (this.statistics.getCurrentDepth() >= this.options.maxDepth!) {
       throw new Error(`Maximum depth of ${this.options.maxDepth} exceeded`);
     }
+  }
+
+  getStats(): ParserStats {
+    return this.statistics.getStats();
   }
 
   getCurrentJson(): JsonValue {
     return this.stack.length > 0 ? this.stack[0] : null;
   }
 
-  getStats(): ParserStats {
-    return { ...this.stats };
-  }
-
-  validateAgainstSchema(schema: any): boolean {
-    const validate = (data: any, schemaNode: any): boolean => {
-      if (schemaNode.type === "object") {
-        return (
-          typeof data === "object" &&
-          data !== null &&
-          Object.keys(schemaNode.properties).every((key) =>
-            validate(data[key], schemaNode.properties[key])
-          )
-        );
-      }
-      if (schemaNode.type === "array") {
-        return (
-          Array.isArray(data) &&
-          data.every((item) => validate(item, schemaNode.items))
-        );
-      }
-      return typeof data === schemaNode.type;
-    };
-    return validate(this.getCurrentJson(), schema);
+  validateAgainstSchema(schema: SchemaNode): boolean {
+    return validateAgainstSchema(this.getCurrentJson(), schema);
   }
 
   end() {
