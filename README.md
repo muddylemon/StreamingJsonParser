@@ -24,7 +24,6 @@ In today's data-driven world, we often deal with large amounts of JSON data, esp
 
 By using StreamingJsonParser in your LLM projects, you can focus more on developing and fine-tuning your models, knowing that your JSON data processing is efficient, reliable, and scalable.
 
-
 ## Features
 
 - Streaming JSON parsing (both synchronous and asynchronous)
@@ -43,6 +42,20 @@ Install StreamingJsonParser using npm:
 ```bash
 npm install streaming-json-parser
 ```
+
+## Installing Integrations
+
+To use StreamingJsonParser with specific AI libraries, you can install the necessary dependencies:
+
+- For TensorFlow.js: `npm run install:tensorflow`
+- For PyTorch: `npm run install:pytorch`
+- For NumPy: `npm run install:numpy`
+- For Pandas: `npm run install:pandas`
+- For scikit-learn: `npm run install:sklearn`
+- For Hugging Face: `npm run install:huggingface`
+- For ONNX Runtime: `npm run install:onnx`
+
+Or install all integrations: `npm install --include=optional`
 
 ## Usage
 

@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "StreamingJsonParser is a robust and flexible JSON parsing library for Node.js that supports both synchronous and asynchronous parsing of JSON data streams.",
   "main": "index.js",
+  "types": "dist/index.d.ts",
   "directories": {
     "example": "examples",
     "test": "tests"
@@ -10,7 +11,14 @@
   "scripts": {
     "test": "jest",
     "test:watch": "jest --watch",
-    "build": "tsc"
+    "build": "tsc",
+    "install:tensorflow": "npm install @tensorflow/tfjs-node",
+    "install:pytorch": "npm install torch",
+    "install:numpy": "npm install numpy",
+    "install:pandas": "npm install pandas",
+    "install:sklearn": "npm install scikit-learn",
+    "install:huggingface": "npm install @huggingface/inference",
+    "install:onnx": "npm install onnxruntime-node"
   },
   "keywords": [
     "json",
@@ -27,6 +35,24 @@
   },
   "dependencies": {
     "npm": "^10.8.3"
+  },
+  "peerDependencies": {
+    "@tensorflow/tfjs-node": "^3.18.0",
+    "torch": "^1.13.1",
+    "numpy": "^0.0.1",
+    "pandas": "^0.0.3",
+    "scikit-learn": "^0.0.1",
+    "@huggingface/inference": "^1.5.1",
+    "onnxruntime-node": "^1.13.1"
+  },
+  "optionalDependencies": {
+    "@tensorflow/tfjs-node": "^3.18.0",
+    "torch": "^1.13.1",
+    "numpy": "^0.0.1",
+    "pandas": "^0.0.3",
+    "scikit-learn": "^0.0.1",
+    "@huggingface/inference": "^1.5.1",
+    "onnxruntime-node": "^1.13.1"
   },
   "jest": {
     "preset": "ts-jest",
