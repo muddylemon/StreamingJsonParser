@@ -36,6 +36,8 @@ By using StreamingJsonParser in your LLM projects, you can focus more on develop
 - Detailed parsing statistics
 - Event-based parsing updates
 - Transformation Pipelines for on-the-fly data preparation
+- Adaptive Chunk Sizing for optimized performance
+
 
 
 ## Installation
@@ -272,6 +274,56 @@ In this example, the "price" will be converted to a float, the "date" to a Date 
 4. **Reduced Memory Usage**: Since transformations are applied on-the-fly, you don't need to hold the entire dataset in memory.
 
 By using Transformation Pipelines, you can streamline your data processing workflow, making it easier to prepare data for AI models or other applications that require specific data formats.
+
+
+
+## Adaptive Chunk Sizing
+
+The Adaptive Chunk Sizing feature dynamically adjusts the chunk size based on the complexity of the JSON being parsed and system resources. This optimization is particularly valuable for diverse AI application environments where JSON structures and system conditions can vary significantly.
+
+### Using Adaptive Chunk Sizing
+
+You can enable adaptive chunk sizing by providing options during parser initialization:
+
+```javascript
+const parser = new StreamingJsonParser({
+  adaptiveChunkSizing: {
+    initialChunkSize: 1024,
+    minChunkSize: 256,
+    maxChunkSize: 4096,
+    targetProcessingTime: 50 // in milliseconds
+  }
+});
+```
+
+### Adaptive Chunk Sizing Options
+
+- `initialChunkSize`: The starting chunk size in bytes.
+- `minChunkSize`: The minimum allowed chunk size in bytes.
+- `maxChunkSize`: The maximum allowed chunk size in bytes.
+- `targetProcessingTime`: The ideal processing time for each chunk in milliseconds.
+
+### How it Works
+
+The adaptive chunk sizing algorithm:
+
+1. Starts with the initial chunk size.
+2. Measures the processing time and complexity of each chunk.
+3. Adjusts the chunk size based on these metrics:
+   - If processing time is too high, it reduces the chunk size.
+   - If processing time is too low, it increases the chunk size.
+   - It also considers the complexity of the JSON structure.
+4. Ensures the chunk size stays within the specified min and max limits.
+
+### Benefits
+
+1. **Optimized Performance**: Automatically adjusts to different JSON structures and system conditions.
+2. **Efficient Resource Usage**: Balances processing speed and memory usage.
+3. **Consistency**: Aims to maintain a consistent processing time across varying JSON complexities.
+4. **Flexibility**: Works well in diverse environments, from resource-constrained systems to high-performance servers.
+
+By using Adaptive Chunk Sizing, your JSON parsing can automatically optimize itself for the specific data and system it's running on, providing better performance and resource utilization across a wide range of scenarios.
+
 
 
 ## Error Handling

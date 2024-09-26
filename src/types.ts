@@ -20,8 +20,9 @@ export interface ParserOptions {
   allowComments?: boolean;
   reviver?: (key: string, value: any) => JsonValue;
   outputStream?: Writable;
+  transforms?: Transform[];
+  adaptiveChunkSizing?: AdaptiveChunkSizingOptions;
 }
-
 export interface ParserStats {
   depth: number;
   objectCount: number;
@@ -62,11 +63,19 @@ export interface Transform {
   transform: TransformFunction;
 }
 
-export interface ParserOptions {
-  maxDepth?: number;
-  allowComments?: boolean;
-  reviver?: (key: string, value: any) => JsonValue;
-  outputStream?: Writable;
-  transforms?: Transform[];
+
+export interface ChunkSizeMetrics {
+  processingTime: number;
+  complexity: number;
+  size: number;
 }
+
+export interface AdaptiveChunkSizingOptions {
+  initialChunkSize: number;
+  minChunkSize: number;
+  maxChunkSize: number;
+  targetProcessingTime: number;
+}
+
+
 

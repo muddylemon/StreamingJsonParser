@@ -1,4 +1,4 @@
-import { ParserOptions, Transform, TransformFunction } from "./types";
+import { AdaptiveChunkSizingOptions, ParserOptions, Transform, TransformFunction } from "./types";
 
 import { StreamingJsonParser } from "./StreamingJsonParser";
 

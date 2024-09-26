@@ -1,4 +1,6 @@
 import {
+  AdaptiveChunkSizingOptions,
+  ChunkSizeMetrics,
   JsonArray,
   JsonObject,
   JsonValue,
@@ -10,6 +12,7 @@ import {
   TransformFunction,
 } from "./types";
 
+import { AdaptiveChunkSizer } from "./utils/adaptiveChunkSizer";
 import { EventEmitter } from "events";
 import { ParserStatistics } from "./utils/statistics";
 import { PathTrie } from "./utils/PathTrie";
@@ -32,6 +35,8 @@ export class StreamingJsonParser extends EventEmitter {
   private selectivePaths: PathTrie | null = null;
   private currentPath: string[] = [];
   private transforms: Transform[] = [];
+  private adaptiveChunkSizer: AdaptiveChunkSizer | null = null;
+  private chunkStartTime: number = 0;
 
 
   constructor(options: ParserOptions = {}) {
@@ -42,12 +47,18 @@ export class StreamingJsonParser extends EventEmitter {
       reviver: options.reviver,
       outputStream: options.outputStream,
       transforms: options.transforms || [],
+      adaptiveChunkSizing: options.adaptiveChunkSizing,
+
     };
     if (this.options.outputStream) {
       this.setOutputStream(this.options.outputStream);
     }
     this.statistics = new ParserStatistics();
     this.transforms = this.options.transforms || [];
+
+    if (this.options.adaptiveChunkSizing) {
+      this.adaptiveChunkSizer = new AdaptiveChunkSizer(this.options.adaptiveChunkSizing);
+    }
 
   }
 
@@ -56,13 +67,28 @@ export class StreamingJsonParser extends EventEmitter {
     this.isFirstWrite = true;
   }
 
+
   process(chunk: string): void {
     try {
       if (this.options.allowComments) {
         chunk = this.removeComments(chunk);
       }
-      this.buffer += chunk;
-      this.parseBuffer();
+
+      this.chunkStartTime = Date.now();
+
+      if (this.adaptiveChunkSizer) {
+        const chunkSize = this.adaptiveChunkSizer.getChunkSize();
+        for (let i = 0; i < chunk.length; i += chunkSize) {
+          const subChunk = chunk.slice(i, i + chunkSize);
+          this.buffer += subChunk;
+          this.parseBuffer();
+        }
+      } else {
+        this.buffer += chunk;
+        this.parseBuffer();
+      }
+
+      this.updateChunkSizeMetrics();
     } catch (error: any) {
       this.emit("error", error);
     }
@@ -318,6 +344,26 @@ export class StreamingJsonParser extends EventEmitter {
 
   validateAgainstSchema(schema: SchemaNode): boolean {
     return validateAgainstSchema(this.getCurrentJson(), schema);
+  }
+
+  private updateChunkSizeMetrics() {
+    if (this.adaptiveChunkSizer) {
+      const processingTime = Date.now() - this.chunkStartTime;
+      const complexity = this.calculateComplexity();
+      const metrics: ChunkSizeMetrics = {
+        processingTime,
+        complexity,
+        size: this.buffer.length,
+      };
+      this.adaptiveChunkSizer.addMetrics(metrics);
+    }
+  }
+
+  private calculateComplexity(): number {
+    const stats = this.getStats();
+    const totalElements = stats.objectCount + stats.arrayCount + stats.stringCount + stats.numberCount + stats.booleanCount + stats.nullCount;
+    const complexityScore = (stats.depth * 0.2) + (stats.objectCount * 0.3) + (stats.arrayCount * 0.3) + (totalElements * 0.2);
+    return Math.min(complexityScore / 100, 1); // Normalize to 0-1 range
   }
 
   setSelectivePaths(paths: string[]): void {
