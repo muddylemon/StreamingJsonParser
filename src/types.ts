@@ -14,7 +14,7 @@ export interface JsonObject {
   [key: string]: JsonValue;
 }
 
-export interface JsonArray extends Array<JsonValue> {}
+export type JsonArray = JsonValue[];
 
 // Parser options
 export interface ParserOptions {
@@ -48,6 +48,7 @@ export interface SchemaNode {
   maxLength?: number;
   pattern?: string;
   additionalProperties?: boolean | SchemaNode;
+  additionalItems?: boolean | SchemaNode;
 }
 
 export interface ParserEvents {

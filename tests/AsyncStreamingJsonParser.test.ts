@@ -24,9 +24,49 @@ describe("AsyncStreamingJsonParser", () => {
       });
     });
 
-    await parser.process('{"name": "John", ');
-    await parser.process('"age": 30}');
+    await parser.process('{"name": "John", "age": 30}');
+    await parser.endAsync();
     await dataPromise;
+  });
+
+  it("should provide correct statistics after async parsing", async () => {
+    const dataPromise = new Promise<void>((resolve) => {
+      parser.on("data", () => {
+        const stats = parser.getStats();
+        expect(stats).toEqual({
+          depth: 2,
+          objectCount: 1,
+          arrayCount: 1,
+          stringCount: 3,
+          numberCount: 1,
+          booleanCount: 1,
+          nullCount: 1,
+        });
+        resolve();
+      });
+    });
+
+    await parser.process(
+      '{"name": "John", "age": 30, "hobbies": ["reading", true], "address": null}'
+    );
+    await parser.endAsync();
+    await dataPromise;
+  });
+
+  it("should emit error on invalid JSON", async () => {
+    const errorPromise = new Promise<void>((resolve, reject) => {
+      parser.on("error", (error) => {
+        expect(error).toBeInstanceOf(Error);
+        resolve();
+      });
+      parser.on("data", () => {
+        reject(new Error("Should not emit data for invalid JSON"));
+      });
+    });
+
+    await parser.process('{"name": "John"');
+    await parser.endAsync();
+    await errorPromise;
   });
 
   it("should handle large inputs without blocking", async () => {
@@ -57,29 +97,6 @@ describe("AsyncStreamingJsonParser", () => {
     await dataPromise;
   });
 
-  it("should provide correct statistics after async parsing", async () => {
-    const dataPromise = new Promise<void>((resolve) => {
-      parser.on("data", () => {
-        const stats = parser.getStats();
-        expect(stats).toEqual({
-          depth: 2,
-          objectCount: 1,
-          arrayCount: 1,
-          stringCount: 3,
-          numberCount: 1,
-          booleanCount: 1,
-          nullCount: 1,
-        });
-        resolve();
-      });
-    });
-
-    await parser.process(
-      '{"name": "John", "age": 30, "hobbies": ["reading", true], "address": null}'
-    );
-    await dataPromise;
-  });
-
   it("should validate against a simple schema after async parsing", async () => {
     const dataPromise = new Promise<void>((resolve) => {
       parser.on("data", () => {
@@ -100,14 +117,18 @@ describe("AsyncStreamingJsonParser", () => {
   });
 
   it("should emit error on invalid JSON", async () => {
-    const errorPromise = new Promise<void>((resolve) => {
+    const errorPromise = new Promise<void>((resolve, reject) => {
       parser.on("error", (error) => {
         expect(error).toBeInstanceOf(Error);
         resolve();
       });
+      parser.on("data", () => {
+        reject(new Error("Should not emit data for invalid JSON"));
+      });
     });
 
     await parser.process('{"name": "John"');
+    await parser.endAsync();
     await errorPromise;
   });
 

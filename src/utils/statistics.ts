@@ -1,4 +1,4 @@
-import { ParserStats } from '../types';
+import { ParserStats } from "../types";
 
 export class ParserStatistics implements ParserStats {
   depth: number = 0;
@@ -10,7 +10,6 @@ export class ParserStatistics implements ParserStats {
   nullCount: number = 0;
 
   private currentDepth: number = 0;
-  
 
   reset(): void {
     this.depth = 0;
@@ -44,6 +43,10 @@ export class ParserStatistics implements ParserStats {
     this.stringCount++;
   }
 
+  decrementString(): void {
+    this.stringCount--;
+  }
+
   incrementNumber(): void {
     this.numberCount++;
   }
@@ -64,7 +67,7 @@ export class ParserStatistics implements ParserStats {
       stringCount: this.stringCount,
       numberCount: this.numberCount,
       booleanCount: this.booleanCount,
-      nullCount: this.nullCount
+      nullCount: this.nullCount,
     };
   }
 

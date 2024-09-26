@@ -1,4 +1,4 @@
-import { JsonValue, SchemaNode } from "../types";
+import { JsonValue, SchemaNode, JsonObject } from "../types";
 
 export function validateAgainstSchema(
   data: JsonValue,
@@ -22,10 +22,12 @@ export function validateAgainstSchema(
       return false;
     }
 
+    const objectData = data as JsonObject;
+
     // Required properties
     if (schema.required) {
       for (const requiredProp of schema.required) {
-        if (!(requiredProp in data)) {
+        if (!(requiredProp in objectData)) {
           return false;
         }
       }
@@ -34,7 +36,10 @@ export function validateAgainstSchema(
     // Property validation
     if (schema.properties) {
       for (const [key, propertySchema] of Object.entries(schema.properties)) {
-        if (key in data && !validateAgainstSchema(data[key], propertySchema)) {
+        if (
+          key in objectData &&
+          !validateAgainstSchema(objectData[key], propertySchema)
+        ) {
           return false;
         }
       }
@@ -42,14 +47,16 @@ export function validateAgainstSchema(
 
     // Additional properties
     if (schema.additionalProperties !== undefined) {
-      const extraKeys = Object.keys(data).filter(
+      const extraKeys = Object.keys(objectData).filter(
         (key) => !(schema.properties && key in schema.properties)
       );
       if (schema.additionalProperties === false && extraKeys.length > 0) {
         return false;
       } else if (typeof schema.additionalProperties === "object") {
         for (const key of extraKeys) {
-          if (!validateAgainstSchema(data[key], schema.additionalProperties)) {
+          if (
+            !validateAgainstSchema(objectData[key], schema.additionalProperties)
+          ) {
             return false;
           }
         }

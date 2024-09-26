@@ -10,42 +10,38 @@ export class AsyncStreamingJsonParser extends StreamingJsonParser {
   }
 
   async process(chunk: string): Promise<void> {
-    super.process(chunk);
+    try {
+      super.process(chunk);
 
-    if (!this.parsePromise) {
-      this.parsePromise = new Promise<void>((resolve) => {
-        this.resolveParser = resolve;
-      });
+      if (!this.parsePromise) {
+        this.parsePromise = new Promise<void>((resolve) => {
+          this.resolveParser = resolve;
+        });
 
-      setImmediate(() => this.asyncParseBuffer());
+        setImmediate(() => this.asyncParseBuffer());
+      }
+
+      return this.parsePromise;
+    } catch (error: any) {
+      this.emit("error", error);
+      throw error;
     }
-
-    return this.parsePromise;
   }
 
   private async asyncParseBuffer() {
-    const chunkSize = 1024; // Process in smaller chunks to avoid blocking
-    let startIndex = 0;
-
-    while (startIndex < this.buffer.length) {
-      const endIndex = Math.min(startIndex + chunkSize, this.buffer.length);
-      const chunk = this.buffer.slice(startIndex, endIndex);
-
+    try {
       super.parseBuffer();
 
-      startIndex = endIndex;
+      if (this.resolveParser) {
+        this.resolveParser();
+        this.parsePromise = null;
+        this.resolveParser = null;
+      }
 
-      // Yield to the event loop periodically
-      await new Promise((resolve) => setImmediate(resolve));
+      this.emit("chunkProcessed");
+    } catch (error: any) {
+      this.emit("error", error);
     }
-
-    if (this.resolveParser) {
-      this.resolveParser();
-      this.parsePromise = null;
-      this.resolveParser = null;
-    }
-
-    this.emit("chunkProcessed");
   }
 
   async endAsync(): Promise<void> {

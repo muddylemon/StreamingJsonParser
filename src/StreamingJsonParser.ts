@@ -61,57 +61,120 @@ export class StreamingJsonParser extends EventEmitter {
   }
 
   protected parseBuffer() {
-    for (let i = 0; i < this.buffer.length; i++) {
-      const char = this.buffer[i];
+    try {
+      for (let i = 0; i < this.buffer.length; i++) {
+        const char = this.buffer[i];
 
-      if (this.isInString) {
-        if (char === '"' && !this.isEscaped) {
-          this.isInString = false;
-          this.addValue(this.stringBuffer);
-          this.stringBuffer = "";
+        if (this.isInString) {
+          if (char === '"' && !this.isEscaped) {
+            this.isInString = false;
+            this.addValue(this.stringBuffer);
+            this.stringBuffer = "";
+          } else {
+            this.stringBuffer += char;
+          }
+          this.isEscaped = char === "\\" && !this.isEscaped;
         } else {
-          this.stringBuffer += char;
+          switch (char) {
+            case "{":
+              this.startObject();
+              break;
+            case "[":
+              this.startArray();
+              break;
+            case "}":
+            case "]":
+              this.endContainer();
+              break;
+            case ":":
+              // Do nothing, we've already captured the key
+              break;
+            case ",":
+              this.currentKey = null;
+              break;
+            case '"':
+              this.isInString = true;
+              break;
+            case " ":
+            case "\n":
+            case "\r":
+            case "\t":
+              // Ignore whitespace
+              break;
+            default:
+              if (this.isStartOfValue(char)) {
+                const value = this.parseValue(this.buffer.slice(i));
+                this.addValue(value.value);
+                i += value.length - 1;
+              }
+          }
         }
-        this.isEscaped = char === "\\" && !this.isEscaped;
+      }
+
+      // Clear processed data from buffer
+      this.buffer = "";
+
+      // Emit data event if parsing is complete
+      if (this.isComplete) {
+        this.emit("data", this.rootObject);
+        this.isComplete = false;
+        this.rootObject = {};
+      }
+    } catch (error: any) {
+      this.emit("error", error);
+    }
+  }
+
+  protected addValue(value: JsonValue) {
+    if (!this.shouldParseCurrentPath()) return;
+
+    if (typeof value === "string") {
+      this.statistics.incrementString();
+    } else if (typeof value === "number") {
+      this.statistics.incrementNumber();
+    } else if (typeof value === "boolean") {
+      this.statistics.incrementBoolean();
+    } else if (value === null) {
+      this.statistics.incrementNull();
+    }
+
+    if (this.options.reviver) {
+      value = this.options.reviver(this.currentKey || "", value);
+    }
+
+    if (this.stack.length === 0) {
+      if (this.currentKey !== null) {
+        this.rootObject[this.currentKey] = value;
+        this.currentKey = null;
       } else {
-        switch (char) {
-          case "{":
-            this.startObject();
-            break;
-          case "[":
-            this.startArray();
-            break;
-          case "}":
-          case "]":
-            this.endContainer();
-            break;
-          case ":":
-            // Do nothing, we've already captured the key
-            break;
-          case ",":
-            this.currentKey = null;
-            break;
-          case '"':
-            this.isInString = true;
-            break;
-          case " ":
-          case "\n":
-          case "\r":
-          case "\t":
-            // Ignore whitespace
-            break;
-          default:
-            if (this.isStartOfValue(char)) {
-              const value = this.parseValue(this.buffer.slice(i));
-              this.addValue(value.value);
-              i += value.length - 1;
-            }
+        // If there's no current key, this value is the entire JSON
+        this.rootObject = value as JsonObject;
+      }
+      this.isComplete = true;
+    } else {
+      const current = this.stack[this.stack.length - 1];
+      if (Array.isArray(current)) {
+        if (current.length > 0) {
+          this.writeToStream(",");
+        }
+        this.writeToStream(JSON.stringify(value));
+        current.push(value);
+      } else {
+        if (this.currentKey !== null) {
+          if (Object.keys(current).length > 0) {
+            this.writeToStream(",");
+          }
+          this.writeToStream(
+            `${JSON.stringify(this.currentKey)}:${JSON.stringify(value)}`
+          );
+          current[this.currentKey] = value;
+          this.currentKey = null;
+        } else if (typeof value === "string") {
+          this.currentKey = value;
+          // Don't decrement string count for object keys
         }
       }
     }
-
-    // Clear processed data from buffer
-    this.buffer = "";
   }
 
   private shouldParseCurrentPath(): boolean {
@@ -190,53 +253,6 @@ export class StreamingJsonParser extends EventEmitter {
     this.writeToStream(completedContainer instanceof Array ? "]" : "}");
     this.statistics.decrementDepth();
     this.currentPath.pop();
-  }
-
-  protected addValue(value: JsonValue) {
-    if (!this.shouldParseCurrentPath()) return;
-
-    if (typeof value === "string") {
-      this.statistics.incrementString();
-    } else if (typeof value === "number") {
-      this.statistics.incrementNumber();
-    } else if (typeof value === "boolean") {
-      this.statistics.incrementBoolean();
-    } else if (value === null) {
-      this.statistics.incrementNull();
-    }
-
-    if (this.options.reviver) {
-      value = this.options.reviver(this.currentKey || "", value);
-    }
-
-    if (this.stack.length === 0) {
-      if (this.currentKey !== null) {
-        this.rootObject[this.currentKey] = value;
-        this.currentKey = null;
-      }
-    } else {
-      const current = this.stack[this.stack.length - 1];
-      if (Array.isArray(current)) {
-        if (current.length > 0) {
-          this.writeToStream(",");
-        }
-        this.writeToStream(JSON.stringify(value));
-        current.push(value);
-      } else {
-        if (this.currentKey !== null) {
-          if (Object.keys(current).length > 0) {
-            this.writeToStream(",");
-          }
-          this.writeToStream(
-            `${JSON.stringify(this.currentKey)}:${JSON.stringify(value)}`
-          );
-          current[this.currentKey] = value;
-          this.currentKey = null;
-        } else if (typeof value === "string") {
-          this.currentKey = value;
-        }
-      }
-    }
   }
 
   protected isStartOfValue(char: string): boolean {
@@ -333,7 +349,9 @@ export class StreamingJsonParser extends EventEmitter {
     if (this.outputStream) {
       this.outputStream.end();
     }
-    this.emit("data", this.rootObject);
+    if (Object.keys(this.rootObject).length > 0) {
+      this.emit("data", this.rootObject);
+    }
     this.emit("end");
   }
 }
