@@ -35,6 +35,8 @@ By using StreamingJsonParser in your LLM projects, you can focus more on develop
 - JSON schema validation
 - Detailed parsing statistics
 - Event-based parsing updates
+- Transformation Pipelines for on-the-fly data preparation
+
 
 ## Installation
 
@@ -178,6 +180,99 @@ The `getStats()` method returns an object with the following properties:
 - `numberCount`: Number of numbers parsed.
 - `booleanCount`: Number of booleans parsed.
 - `nullCount`: Number of null values parsed.
+
+
+## Transformation Pipelines
+
+The Transformation Pipelines feature allows you to define a series of transformations that are applied to the parsed data as it's being processed. This is particularly useful for on-the-fly data preparation, especially when working with AI models or other scenarios that require specific data formats.
+
+### Using Transformations
+
+You can add transformations in two ways:
+
+1. During parser initialization:
+
+```javascript
+const parser = new StreamingJsonParser({
+  transforms: [
+    {
+      path: "data.price",
+      transform: (value) => parseFloat(value)
+    },
+    {
+      path: "data.date",
+      transform: (value) => new Date(value)
+    }
+  ]
+});
+```
+
+2. After parser initialization:
+
+```javascript
+parser.addTransform("data.name", (value) => value.toUpperCase());
+```
+
+### Transformation Function Signature
+
+A transformation function has the following signature:
+
+```typescript
+(value: JsonValue, key: string, path: string[]) => JsonValue
+```
+
+- `value`: The current value being processed
+- `key`: The key of the current value in its parent object
+- `path`: An array representing the full path to the current value
+
+### Path Specification
+
+Paths are specified as dot-separated strings. You can use `*` as a wildcard to match any key at a particular level. For example:
+
+- `"data.price"`: Matches the "price" field inside a "data" object
+- `"users.*.name"`: Matches the "name" field of any object inside the "users" array
+
+### Example
+
+Here's an example demonstrating how to use transformation pipelines:
+
+```javascript
+const { StreamingJsonParser } = require("streaming-json-parser");
+
+const parser = new StreamingJsonParser({
+  transforms: [
+    {
+      path: "data.price",
+      transform: (value) => parseFloat(value)
+    },
+    {
+      path: "data.date",
+      transform: (value) => new Date(value)
+    }
+  ]
+});
+
+parser.addTransform("data.name", (value) => value.toUpperCase());
+
+parser.on("data", (data) => {
+  console.log("Parsed and transformed data:", data);
+});
+
+parser.process('{"data": {"name": "Product X", "price": "19.99", "date": "2023-09-26T12:00:00Z"}}');
+parser.end();
+```
+
+In this example, the "price" will be converted to a float, the "date" to a Date object, and the "name" will be uppercased.
+
+### Benefits
+
+1. **Efficiency**: Transformations are applied during parsing, eliminating the need for separate processing steps.
+2. **Flexibility**: You can easily add or modify transformations as needed.
+3. **Targeted Processing**: Transformations can be applied to specific paths in your JSON data.
+4. **Reduced Memory Usage**: Since transformations are applied on-the-fly, you don't need to hold the entire dataset in memory.
+
+By using Transformation Pipelines, you can streamline your data processing workflow, making it easier to prepare data for AI models or other applications that require specific data formats.
+
 
 ## Error Handling
 
