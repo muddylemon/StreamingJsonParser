@@ -1,6 +1,5 @@
 import { Writable } from "stream";
 
-// JSON value types
 export type JsonValue =
   | string
   | number
@@ -16,7 +15,6 @@ export interface JsonObject {
 
 export type JsonArray = JsonValue[];
 
-// Parser options
 export interface ParserOptions {
   maxDepth?: number;
   allowComments?: boolean;
@@ -24,7 +22,6 @@ export interface ParserOptions {
   outputStream?: Writable;
 }
 
-// Parser statistics
 export interface ParserStats {
   depth: number;
   objectCount: number;
@@ -35,7 +32,6 @@ export interface ParserStats {
   nullCount: number;
 }
 
-// Schema validation
 export interface SchemaNode {
   type: string | string[];
   properties?: { [key: string]: SchemaNode };

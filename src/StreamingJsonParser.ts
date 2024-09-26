@@ -1,7 +1,9 @@
 import { EventEmitter } from "events";
 import { Writable } from "stream";
 import { ParserStatistics } from "./utils/statistics";
+import { PathTrie } from "./utils/PathTrie";
 import { validateAgainstSchema } from "./utils/schemaValidator";
+
 import {
   JsonValue,
   JsonObject,
@@ -11,7 +13,6 @@ import {
   SchemaNode,
   ParserEvents,
 } from "./types";
-import { PathTrie } from "./utils/PathTrie";
 
 export class StreamingJsonParser extends EventEmitter {
   private statistics: ParserStatistics;
