@@ -1,4 +1,4 @@
-import { Writable } from 'stream';
+import { Writable } from "stream";
 
 // JSON value types
 export type JsonValue =
@@ -6,6 +6,7 @@ export type JsonValue =
   | number
   | boolean
   | null
+  | Date
   | JsonObject
   | JsonArray;
 
@@ -18,9 +19,8 @@ export interface JsonArray extends Array<JsonValue> {}
 // Parser options
 export interface ParserOptions {
   maxDepth?: number;
-  maxStringLength?: number;
   allowComments?: boolean;
-  reviver?: (key: string, value: any) => any;
+  reviver?: (key: string, value: any) => JsonValue;
   outputStream?: Writable;
 }
 
@@ -50,10 +50,9 @@ export interface SchemaNode {
   additionalProperties?: boolean | SchemaNode;
 }
 
-// Parser events
 export interface ParserEvents {
-    chunkProcessed: () => void;
-    data: (data: JsonValue) => void;
-    error: (error: Error) => void;
-    end: () => void;
+  data: (data: JsonValue) => void;
+  error: (error: Error) => void;
+  end: () => void;
+  chunkProcessed: () => void;
 }

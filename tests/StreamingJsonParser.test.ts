@@ -1,5 +1,7 @@
 import { StreamingJsonParser } from "../src/StreamingJsonParser";
 import { Writable } from "stream";
+import { JsonObject, JsonValue } from "../src/types";
+import { isJsonObjectWithDate } from "../src/utils/typeGuards";
 
 describe("StreamingJsonParser", () => {
   let parser: StreamingJsonParser;
@@ -14,7 +16,7 @@ describe("StreamingJsonParser", () => {
     parser = new StreamingJsonParser({ outputStream });
   });
 
-  it("should parse a simple complete JSON object", (done) => {
+  it("should parse a simple complete JSON object", (done: jest.DoneCallback) => {
     parser.on("data", (data) => {
       expect(data).toEqual({ name: "John", age: 30 });
       done();
@@ -22,7 +24,7 @@ describe("StreamingJsonParser", () => {
     parser.process('{"name": "John", "age": 30}');
   });
 
-  it("should handle streaming data in multiple chunks", (done) => {
+  it("should handle streaming data in multiple chunks", (done: jest.DoneCallback) => {
     const expectedResults = [{}, { name: "John" }, { name: "John", age: 30 }];
     let dataCount = 0;
 
@@ -39,7 +41,7 @@ describe("StreamingJsonParser", () => {
     parser.process('"age": 30}');
   });
 
-  it("should parse nested objects", (done) => {
+  it("should parse nested objects", (done: jest.DoneCallback) => {
     parser.on("data", (data) => {
       expect(data).toEqual({ person: { name: "John", age: 30 } });
       done();
@@ -47,7 +49,7 @@ describe("StreamingJsonParser", () => {
     parser.process('{"person": {"name": "John", "age": 30}}');
   });
 
-  it("should parse arrays", (done) => {
+  it("should parse arrays", (done: jest.DoneCallback) => {
     parser.on("data", (data) => {
       expect(data).toEqual({ numbers: [1, 2, 3], names: ["John", "Jane"] });
       done();
@@ -55,7 +57,7 @@ describe("StreamingJsonParser", () => {
     parser.process('{"numbers": [1, 2, 3], "names": ["John", "Jane"]}');
   });
 
-  it("should handle different types of values", (done) => {
+  it("should handle different types of values", (done: jest.DoneCallback) => {
     parser.on("data", (data) => {
       expect(data).toEqual({
         string: "hello",
@@ -71,7 +73,7 @@ describe("StreamingJsonParser", () => {
     );
   });
 
-  it("should handle escaped characters in strings", (done) => {
+  it("should handle escaped characters in strings", (done: jest.DoneCallback) => {
     parser.on("data", (data) => {
       expect(data).toEqual({ text: 'Hello "World"!' });
       done();
@@ -79,7 +81,7 @@ describe("StreamingJsonParser", () => {
     parser.process('{"text": "Hello \\"World\\"!"}');
   });
 
-  it("should handle whitespace", (done) => {
+  it("should handle whitespace", (done: jest.DoneCallback) => {
     parser.on("data", (data) => {
       expect(data).toEqual({ name: "John", age: 30 });
       done();
@@ -87,7 +89,7 @@ describe("StreamingJsonParser", () => {
     parser.process('{\n  "name": "John",\n  "age": 30\n}');
   });
 
-  it("should parse large numbers correctly", (done) => {
+  it("should parse large numbers correctly", (done: jest.DoneCallback) => {
     parser.on("data", (data) => {
       expect(data).toEqual({ big: 1234567890, small: 0.00001 });
       done();
@@ -95,7 +97,7 @@ describe("StreamingJsonParser", () => {
     parser.process('{"big": 1234567890, "small": 0.00001}');
   });
 
-  it("should parse scientific notation", (done) => {
+  it("should parse scientific notation", (done: jest.DoneCallback) => {
     parser.on("data", (data) => {
       expect(data).toEqual({ large: 1e10, tiny: 1e-10 });
       done();
@@ -103,7 +105,7 @@ describe("StreamingJsonParser", () => {
     parser.process('{"large": 1e10, "tiny": 1e-10}');
   });
 
-  it("should handle comments when allowComments option is true", (done) => {
+  it("should handle comments when allowComments option is true", (done: jest.DoneCallback) => {
     parser = new StreamingJsonParser({ allowComments: true });
     parser.on("data", (data) => {
       expect(data).toEqual({ name: "John", age: 30 });
@@ -121,18 +123,22 @@ describe("StreamingJsonParser", () => {
     }).toThrow();
   });
 
-  it("should use reviver function when provided", (done) => {
-    const reviver = (key: string, value: any) =>
+  it("should use reviver function when provided", (done: jest.DoneCallback) => {
+    const reviver = (key: string, value: any): any =>
       key === "date" ? new Date(value) : value;
     parser = new StreamingJsonParser({ reviver });
-    parser.on("data", (data) => {
-      expect(data.date).toBeInstanceOf(Date);
-      done();
+    parser.on("data", (data: JsonValue) => {
+      if (isJsonObjectWithDate(data)) {
+        expect(data.date).toBeInstanceOf(Date);
+        done();
+      } else {
+        done(new Error("Expected data to be an object with a date property"));
+      }
     });
     parser.process('{"date": "2023-01-01T00:00:00Z"}');
   });
 
-  it("should provide correct statistics", (done) => {
+  it("should provide correct statistics", (done: jest.DoneCallback) => {
     parser.on("data", () => {
       const stats = parser.getStats();
       expect(stats).toEqual({
@@ -151,7 +157,7 @@ describe("StreamingJsonParser", () => {
     );
   });
 
-  it("should validate against a simple schema", (done) => {
+  it("should validate against a simple schema", (done: jest.DoneCallback) => {
     parser.on("data", () => {
       const schema = {
         type: "object",
@@ -166,7 +172,7 @@ describe("StreamingJsonParser", () => {
     parser.process('{"name": "John", "age": 30}');
   });
 
-  it("should emit error on invalid JSON", (done) => {
+  it("should emit error on invalid JSON", (done: jest.DoneCallback) => {
     parser.on("error", (error) => {
       expect(error).toBeInstanceOf(Error);
       done();
@@ -174,9 +180,144 @@ describe("StreamingJsonParser", () => {
     parser.process('{"name": "John"');
   });
 
-  it("should emit end event when parsing is complete", (done) => {
+  it("should emit end event when parsing is complete", (done: jest.DoneCallback) => {
     parser.on("end", done);
     parser.process('{"name": "John"}');
+    parser.end();
+  });
+});
+
+describe("StreamingJsonParser Selective Parsing", () => {
+  let parser: StreamingJsonParser;
+  let outputStream: Writable;
+  let output: string;
+
+  beforeEach(() => {
+    output = "";
+    outputStream = new Writable({
+      write(chunk, encoding, callback) {
+        output += chunk.toString();
+        callback();
+      },
+    });
+    parser = new StreamingJsonParser({ outputStream });
+  });
+
+  it("should parse only selected paths", (done: jest.DoneCallback) => {
+    parser.setSelectivePaths(["name", "age"]);
+    parser.on("data", (data) => {
+      expect(data).toEqual({ name: "John", age: 30 });
+      expect(output).toBe('{"name":"John","age":30}');
+      done();
+    });
+    parser.process('{"name": "John", "age": 30, "city": "New York"}');
+    parser.end();
+  });
+
+  it("should handle nested paths", (done: jest.DoneCallback) => {
+    parser.setSelectivePaths(["user.name", "user.age"]);
+    parser.on("data", (data) => {
+      expect(data).toEqual({ user: { name: "John", age: 30 } });
+      done();
+    });
+    parser.process('{"user": {"name": "John", "age": 30, "city": "New York"}}');
+    parser.end();
+  });
+
+  it("should handle array wildcards", (done: jest.DoneCallback) => {
+    parser.setSelectivePaths(["users.*.name"]);
+    parser.on("data", (data) => {
+      expect(data).toEqual({ users: [{ name: "John" }, { name: "Jane" }] });
+      done();
+    });
+    parser.process(
+      '{"users": [{"name": "John", "age": 30}, {"name": "Jane", "age": 25}]}'
+    );
+    parser.end();
+  });
+
+  it("should handle multiple array levels", (done: jest.DoneCallback) => {
+    parser.setSelectivePaths(["data.*.items.*.id"]);
+    parser.on("data", (data) => {
+      expect(data).toEqual({
+        data: [
+          { items: [{ id: 1 }, { id: 2 }] },
+          { items: [{ id: 3 }, { id: 4 }] },
+        ],
+      });
+      done();
+    });
+    parser.process(
+      '{"data": [{"items": [{"id": 1, "name": "Item 1"}, {"id": 2, "name": "Item 2"}]}, {"items": [{"id": 3, "name": "Item 3"}, {"id": 4, "name": "Item 4"}]}]}'
+    );
+    parser.end();
+  });
+
+  it("should handle paths that don't exist", (done: jest.DoneCallback) => {
+    parser.setSelectivePaths(["name", "age", "address.street"]);
+    parser.on("data", (data) => {
+      expect(data).toEqual({ name: "John", age: 30 });
+      done();
+    });
+    parser.process('{"name": "John", "age": 30}');
+    parser.end();
+  });
+
+  it("should reset selective paths", (done: jest.DoneCallback) => {
+    parser.setSelectivePaths(["name"]);
+    parser.resetSelectivePaths();
+    parser.on("data", (data) => {
+      expect(data).toEqual({ name: "John", age: 30, city: "New York" });
+      done();
+    });
+    parser.process('{"name": "John", "age": 30, "city": "New York"}');
+    parser.end();
+  });
+
+  it("should throw error for invalid paths", () => {
+    expect(() => {
+      parser.setSelectivePaths(["name!"]);
+    }).toThrow("Invalid path: name!");
+  });
+
+  it("should handle empty objects and arrays", (done: jest.DoneCallback) => {
+    parser.setSelectivePaths(["emptyObj", "emptyArr"]);
+    parser.on("data", (data) => {
+      expect(data).toEqual({ emptyObj: {}, emptyArr: [] });
+      done();
+    });
+    parser.process('{"emptyObj": {}, "emptyArr": [], "other": "data"}');
+    parser.end();
+  });
+
+  it("should handle streaming of large objects with selective parsing", (done: jest.DoneCallback) => {
+    parser.setSelectivePaths(["id", "name"]);
+    const largeObject = {
+      id: 1,
+      name: "Large Object",
+      data: Array(1000).fill({ key: "value" }),
+    };
+
+    parser.on("data", (data) => {
+      expect(data).toEqual({ id: 1, name: "Large Object" });
+      expect(JSON.stringify(data).length).toBeLessThan(
+        JSON.stringify(largeObject).length
+      );
+      done();
+    });
+
+    parser.process(JSON.stringify(largeObject));
+    parser.end();
+  });
+
+  it("should maintain correct JSON structure with selective parsing", (done: jest.DoneCallback) => {
+    parser.setSelectivePaths(["a.b", "x.y"]);
+    parser.on("data", (data) => {
+      expect(data).toEqual({ a: { b: 2 }, x: { y: 4 } });
+      expect(output).toBe('{"a":{"b":2},"x":{"y":4}}');
+      done();
+    });
+    parser.process('{"a": {"b": 2, "c": 3}, "x": {"y": 4, "z": 5}}');
     parser.end();
   });
 });

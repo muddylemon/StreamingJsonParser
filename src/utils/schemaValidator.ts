@@ -1,9 +1,12 @@
-import { JsonValue, SchemaNode } from '../types';
+import { JsonValue, SchemaNode } from "../types";
 
-export function validateAgainstSchema(data: JsonValue, schema: SchemaNode): boolean {
+export function validateAgainstSchema(
+  data: JsonValue,
+  schema: SchemaNode
+): boolean {
   // Type validation
   if (Array.isArray(schema.type)) {
-    if (!schema.type.some(type => validateType(data, type))) {
+    if (!schema.type.some((type) => validateType(data, type))) {
       return false;
     }
   } else if (!validateType(data, schema.type)) {
@@ -11,8 +14,11 @@ export function validateAgainstSchema(data: JsonValue, schema: SchemaNode): bool
   }
 
   // Object validation
-  if (schema.type === 'object' || (Array.isArray(schema.type) && schema.type.includes('object'))) {
-    if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+  if (
+    schema.type === "object" ||
+    (Array.isArray(schema.type) && schema.type.includes("object"))
+  ) {
+    if (typeof data !== "object" || data === null || Array.isArray(data)) {
       return false;
     }
 
@@ -36,10 +42,12 @@ export function validateAgainstSchema(data: JsonValue, schema: SchemaNode): bool
 
     // Additional properties
     if (schema.additionalProperties !== undefined) {
-      const extraKeys = Object.keys(data).filter(key => !(schema.properties && key in schema.properties));
+      const extraKeys = Object.keys(data).filter(
+        (key) => !(schema.properties && key in schema.properties)
+      );
       if (schema.additionalProperties === false && extraKeys.length > 0) {
         return false;
-      } else if (typeof schema.additionalProperties === 'object') {
+      } else if (typeof schema.additionalProperties === "object") {
         for (const key of extraKeys) {
           if (!validateAgainstSchema(data[key], schema.additionalProperties)) {
             return false;
@@ -50,7 +58,10 @@ export function validateAgainstSchema(data: JsonValue, schema: SchemaNode): bool
   }
 
   // Array validation
-  if (schema.type === 'array' || (Array.isArray(schema.type) && schema.type.includes('array'))) {
+  if (
+    schema.type === "array" ||
+    (Array.isArray(schema.type) && schema.type.includes("array"))
+  ) {
     if (!Array.isArray(data)) {
       return false;
     }
@@ -62,7 +73,10 @@ export function validateAgainstSchema(data: JsonValue, schema: SchemaNode): bool
             if (!validateAgainstSchema(data[i], schema.items[i])) {
               return false;
             }
-          } else if ('additionalItems' in schema && schema.additionalItems === false) {
+          } else if (
+            "additionalItems" in schema &&
+            schema.additionalItems === false
+          ) {
             return false;
           }
         }
@@ -77,15 +91,24 @@ export function validateAgainstSchema(data: JsonValue, schema: SchemaNode): bool
   }
 
   // String validation
-  if (schema.type === 'string' || (Array.isArray(schema.type) && schema.type.includes('string'))) {
-    if (typeof data !== 'string' && !(data instanceof Date)) {
+  if (
+    schema.type === "string" ||
+    (Array.isArray(schema.type) && schema.type.includes("string"))
+  ) {
+    if (typeof data !== "string" && !(data instanceof Date)) {
       return false;
     }
     const stringValue = data instanceof Date ? data.toISOString() : data;
-    if (schema.minLength !== undefined && stringValue.length < schema.minLength) {
+    if (
+      schema.minLength !== undefined &&
+      stringValue.length < schema.minLength
+    ) {
       return false;
     }
-    if (schema.maxLength !== undefined && stringValue.length > schema.maxLength) {
+    if (
+      schema.maxLength !== undefined &&
+      stringValue.length > schema.maxLength
+    ) {
       return false;
     }
     if (schema.pattern && !new RegExp(schema.pattern).test(stringValue)) {
@@ -94,8 +117,11 @@ export function validateAgainstSchema(data: JsonValue, schema: SchemaNode): bool
   }
 
   // Number validation
-  if (schema.type === 'number' || (Array.isArray(schema.type) && schema.type.includes('number'))) {
-    if (typeof data !== 'number') {
+  if (
+    schema.type === "number" ||
+    (Array.isArray(schema.type) && schema.type.includes("number"))
+  ) {
+    if (typeof data !== "number") {
       return false;
     }
     if (schema.minimum !== undefined && data < schema.minimum) {
@@ -116,17 +142,17 @@ export function validateAgainstSchema(data: JsonValue, schema: SchemaNode): bool
 
 function validateType(data: JsonValue, type: string): boolean {
   switch (type) {
-    case 'string':
-      return typeof data === 'string' || data instanceof Date;
-    case 'number':
-      return typeof data === 'number';
-    case 'boolean':
-      return typeof data === 'boolean';
-    case 'null':
+    case "string":
+      return typeof data === "string" || data instanceof Date;
+    case "number":
+      return typeof data === "number";
+    case "boolean":
+      return typeof data === "boolean";
+    case "null":
       return data === null;
-    case 'object':
-      return typeof data === 'object' && data !== null && !Array.isArray(data);
-    case 'array':
+    case "object":
+      return typeof data === "object" && data !== null && !Array.isArray(data);
+    case "array":
       return Array.isArray(data);
     default:
       return false;

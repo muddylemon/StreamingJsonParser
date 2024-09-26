@@ -1,7 +1,7 @@
-import { EventEmitter } from 'events';
-import { Writable } from 'stream';
-import { ParserStatistics } from './utils/statistics';
-import { validateAgainstSchema } from './utils/schemaValidator';
+import { EventEmitter } from "events";
+import { Writable } from "stream";
+import { ParserStatistics } from "./utils/statistics";
+import { validateAgainstSchema } from "./utils/schemaValidator";
 import {
   JsonValue,
   JsonObject,
@@ -9,8 +9,9 @@ import {
   ParserOptions,
   ParserStats,
   SchemaNode,
-  ParserEvents
-} from './types';
+  ParserEvents,
+} from "./types";
+import { PathTrie } from "./utils/PathTrie";
 
 export class StreamingJsonParser extends EventEmitter {
   private statistics: ParserStatistics;
@@ -25,6 +26,8 @@ export class StreamingJsonParser extends EventEmitter {
   protected options: ParserOptions;
   protected isComplete: boolean = false;
   protected rootObject: JsonObject = {};
+  private selectivePaths: PathTrie | null = null;
+  private currentPath: string[] = [];
 
   constructor(options: ParserOptions = {}) {
     super();
@@ -52,7 +55,7 @@ export class StreamingJsonParser extends EventEmitter {
       }
       this.buffer += chunk;
       this.parseBuffer();
-    } catch (error:any) {
+    } catch (error: any) {
       this.emit("error", error);
     }
   }
@@ -111,7 +114,50 @@ export class StreamingJsonParser extends EventEmitter {
     this.buffer = "";
   }
 
+  private shouldParseCurrentPath(): boolean {
+    if (!this.selectivePaths) return true;
+    return this.selectivePaths.hasPath(this.currentPath);
+  }
+
+  private createPartialObject(fullObject: JsonValue): JsonValue {
+    if (
+      !this.selectivePaths ||
+      typeof fullObject !== "object" ||
+      fullObject === null
+    ) {
+      return fullObject;
+    }
+
+    if (Array.isArray(fullObject)) {
+      return fullObject.map((item) => this.createPartialObject(item));
+    }
+
+    const partialObject: JsonObject = {};
+    for (const path of this.selectivePaths.getAllPaths()) {
+      let current: any = fullObject;
+      let partial: any = partialObject;
+      for (let i = 0; i < path.length; i++) {
+        const key = path[i];
+        if (key === "*" && Array.isArray(current)) {
+          partial = partial.map((item: any) => this.createPartialObject(item));
+          break;
+        }
+        if (i === path.length - 1) {
+          partial[key] = current[key];
+        } else {
+          if (!(key in current)) break; // Handle case where path doesn't exist
+          current = current[key];
+          partial[key] = partial[key] || (Array.isArray(current) ? [] : {});
+          partial = partial[key];
+        }
+      }
+    }
+    return partialObject;
+  }
+
   protected startObject() {
+    if (!this.shouldParseCurrentPath()) return;
+
     this.checkDepth();
     this.writeToStream("{");
     const newObject = {};
@@ -119,6 +165,8 @@ export class StreamingJsonParser extends EventEmitter {
     this.stack.push(newObject);
     this.statistics.incrementDepth();
     this.statistics.incrementObject();
+
+    this.currentPath.push(this.currentKey || "");
   }
 
   protected startArray() {
@@ -132,6 +180,8 @@ export class StreamingJsonParser extends EventEmitter {
   }
 
   protected endContainer() {
+    if (!this.shouldParseCurrentPath()) return;
+
     const completedContainer = this.stack.pop();
     if (this.stack.length === 0) {
       this.isComplete = true;
@@ -139,9 +189,12 @@ export class StreamingJsonParser extends EventEmitter {
     }
     this.writeToStream(completedContainer instanceof Array ? "]" : "}");
     this.statistics.decrementDepth();
+    this.currentPath.pop();
   }
 
   protected addValue(value: JsonValue) {
+    if (!this.shouldParseCurrentPath()) return;
+
     if (typeof value === "string") {
       this.statistics.incrementString();
     } else if (typeof value === "number") {
@@ -174,7 +227,9 @@ export class StreamingJsonParser extends EventEmitter {
           if (Object.keys(current).length > 0) {
             this.writeToStream(",");
           }
-          this.writeToStream(`${JSON.stringify(this.currentKey)}:${JSON.stringify(value)}`);
+          this.writeToStream(
+            `${JSON.stringify(this.currentKey)}:${JSON.stringify(value)}`
+          );
           current[this.currentKey] = value;
           this.currentKey = null;
         } else if (typeof value === "string") {
@@ -207,12 +262,13 @@ export class StreamingJsonParser extends EventEmitter {
 
   protected writeToStream(data: string) {
     if (this.outputStream) {
-      if (this.isFirstWrite) {
-        this.isFirstWrite = false;
+      if (this.selectivePaths) {
+        const parsedData = JSON.parse(data);
+        const partialData = this.createPartialObject(parsedData);
+        this.outputStream.write(JSON.stringify(partialData));
       } else {
-        data = " " + data; // Add space for better formatting
+        this.outputStream.write(data);
       }
-      this.outputStream.write(data);
     }
   }
 
@@ -237,12 +293,39 @@ export class StreamingJsonParser extends EventEmitter {
   validateAgainstSchema(schema: SchemaNode): boolean {
     return validateAgainstSchema(this.getCurrentJson(), schema);
   }
-  
+
+  setSelectivePaths(paths: string[]): void {
+    for (const path of paths) {
+      if (!/^[a-zA-Z0-9.]+$/.test(path)) {
+        throw new Error(`Invalid path: ${path}`);
+      }
+    }
+    this.selectivePaths = new PathTrie();
+    for (const path of paths) {
+      this.selectivePaths.addPath(path.split("."));
+    }
+  }
+
+  resetSelectivePaths(): void {
+    this.selectivePaths = null;
+    this.currentPath = [];
+  }
+
   on<E extends keyof ParserEvents>(event: E, listener: ParserEvents[E]): this {
     return super.on(event, listener);
   }
 
-  emit<E extends keyof ParserEvents>(event: E, ...args: Parameters<ParserEvents[E]>): boolean {
+  emit<E extends keyof ParserEvents>(
+    event: E,
+    ...args: Parameters<ParserEvents[E]>
+  ): boolean {
+    if (event === "data" && this.selectivePaths) {
+      const [data] = args as [JsonValue];
+      if (typeof data === "object" && data !== null) {
+        const partialData = this.createPartialObject(data as JsonObject);
+        return super.emit(event, partialData as any);
+      }
+    }
     return super.emit(event, ...args);
   }
 
