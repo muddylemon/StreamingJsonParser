@@ -1,18 +1,20 @@
-import { EventEmitter } from "events";
-import { Writable } from "stream";
-import { ParserStatistics } from "./utils/statistics";
-import { PathTrie } from "./utils/PathTrie";
-import { validateAgainstSchema } from "./utils/schemaValidator";
-
 import {
-  JsonValue,
-  JsonObject,
   JsonArray,
+  JsonObject,
+  JsonValue,
+  ParserEvents,
   ParserOptions,
   ParserStats,
   SchemaNode,
-  ParserEvents,
+  Transform,
+  TransformFunction,
 } from "./types";
+
+import { EventEmitter } from "events";
+import { ParserStatistics } from "./utils/statistics";
+import { PathTrie } from "./utils/PathTrie";
+import { Writable } from "stream";
+import { validateAgainstSchema } from "./utils/schemaValidator";
 
 export class StreamingJsonParser extends EventEmitter {
   private statistics: ParserStatistics;
@@ -29,6 +31,8 @@ export class StreamingJsonParser extends EventEmitter {
   protected rootObject: JsonObject = {};
   private selectivePaths: PathTrie | null = null;
   private currentPath: string[] = [];
+  private transforms: Transform[] = [];
+
 
   constructor(options: ParserOptions = {}) {
     super();
@@ -37,11 +41,14 @@ export class StreamingJsonParser extends EventEmitter {
       allowComments: options.allowComments || false,
       reviver: options.reviver,
       outputStream: options.outputStream,
+      transforms: options.transforms || [],
     };
     if (this.options.outputStream) {
       this.setOutputStream(this.options.outputStream);
     }
     this.statistics = new ParserStatistics();
+    this.transforms = this.options.transforms || [];
+
   }
 
   setOutputStream(outputStream: Writable) {
@@ -128,6 +135,8 @@ export class StreamingJsonParser extends EventEmitter {
 
   protected addValue(value: JsonValue) {
     if (!this.shouldParseCurrentPath()) return;
+
+    value = this.applyTransforms(value, this.currentPath);
 
     if (typeof value === "string") {
       this.statistics.incrementString();
@@ -326,6 +335,30 @@ export class StreamingJsonParser extends EventEmitter {
   resetSelectivePaths(): void {
     this.selectivePaths = null;
     this.currentPath = [];
+  }
+
+  // Transform functions
+
+  addTransform(path: string, transform: TransformFunction): void {
+    this.transforms.push({ path, transform });
+  }
+
+  private applyTransforms(value: JsonValue, path: string[]): JsonValue {
+    let transformedValue = value;
+    for (const { path: transformPath, transform } of this.transforms) {
+      if (this.pathMatches(path, transformPath)) {
+        transformedValue = transform(transformedValue, path[path.length - 1], path);
+      }
+    }
+    return transformedValue;
+  }
+
+  private pathMatches(currentPath: string[], transformPath: string): boolean {
+    const transformSegments = transformPath.split('.');
+    if (currentPath.length !== transformSegments.length) return false;
+    return transformSegments.every((segment, index) =>
+      segment === '*' || segment === currentPath[index]
+    );
   }
 
   on<E extends keyof ParserEvents>(event: E, listener: ParserEvents[E]): this {

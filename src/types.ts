@@ -53,3 +53,20 @@ export interface ParserEvents {
   end: () => void;
   chunkProcessed: () => void;
 }
+
+
+export type TransformFunction = (value: JsonValue, key: string, path: string[]) => JsonValue;
+
+export interface Transform {
+  path: string;
+  transform: TransformFunction;
+}
+
+export interface ParserOptions {
+  maxDepth?: number;
+  allowComments?: boolean;
+  reviver?: (key: string, value: any) => JsonValue;
+  outputStream?: Writable;
+  transforms?: Transform[];
+}
+

@@ -1,4 +1,5 @@
-import { ParserOptions } from "./types";
+import { ParserOptions, Transform, TransformFunction } from "./types";
+
 import { StreamingJsonParser } from "./StreamingJsonParser";
 
 export class AsyncStreamingJsonParser extends StreamingJsonParser {
@@ -60,4 +61,12 @@ export class AsyncStreamingJsonParser extends StreamingJsonParser {
       }
     });
   }
+
+  async addTransform(path: string, transform: TransformFunction): Promise<void> {
+    return new Promise<void>((resolve) => {
+      super.addTransform(path, transform);
+      resolve();
+    });
+  }
+
 }
