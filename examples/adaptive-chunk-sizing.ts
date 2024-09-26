@@ -4,7 +4,7 @@ const fs = require("fs");
 
 // Create a custom output stream
 const outputStream = new Writable({
-    write(chunk, encoding, callback) {
+    write(chunk, _encoding, callback) {
         console.log("Processed chunk size:", chunk.length);
         callback();
     },
