@@ -427,9 +427,8 @@ export class StreamingJsonParser extends EventEmitter {
   }
 
   private updateAggregations(path: string[], value: JsonValue): void {
-    const fullPath = path.join(".");
     for (const [aggPath, aggregation] of this.aggregations) {
-      if (this.pathMatches([fullPath], aggPath)) {
+      if (this.pathMatches(path, aggPath)) {
         this.updateAggregation(aggregation, value);
       }
     }
