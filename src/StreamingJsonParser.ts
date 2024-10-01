@@ -1,5 +1,8 @@
 import {
   AdaptiveChunkSizingOptions,
+  Aggregation,
+  AggregationResult,
+  AggregationType,
   ChunkSizeMetrics,
   JsonArray,
   JsonObject,
@@ -12,7 +15,7 @@ import {
   TransformFunction,
 } from "./types";
 
-import { AdaptiveChunkSizer } from "./utils/adaptiveChunkSizer";
+import { AdaptiveChunkSizer } from "./utils/AdaptiveChunkSizer";
 import { EventEmitter } from "events";
 import { ParserStatistics } from "./utils/statistics";
 import { PathTrie } from "./utils/PathTrie";
@@ -37,7 +40,7 @@ export class StreamingJsonParser extends EventEmitter {
   private transforms: Transform[] = [];
   private adaptiveChunkSizer: AdaptiveChunkSizer | null = null;
   private chunkStartTime: number = 0;
-
+  private aggregations: Map<string, Aggregation> = new Map();
 
   constructor(options: ParserOptions = {}) {
     super();
@@ -48,7 +51,7 @@ export class StreamingJsonParser extends EventEmitter {
       outputStream: options.outputStream,
       transforms: options.transforms || [],
       adaptiveChunkSizing: options.adaptiveChunkSizing,
-
+      aggregations: options.aggregations || {},
     };
     if (this.options.outputStream) {
       this.setOutputStream(this.options.outputStream);
@@ -57,16 +60,21 @@ export class StreamingJsonParser extends EventEmitter {
     this.transforms = this.options.transforms || [];
 
     if (this.options.adaptiveChunkSizing) {
-      this.adaptiveChunkSizer = new AdaptiveChunkSizer(this.options.adaptiveChunkSizing);
+      this.adaptiveChunkSizer = new AdaptiveChunkSizer(
+        this.options.adaptiveChunkSizing
+      );
     }
-
+    if (this.options.aggregations) {
+      for (const [path, type] of Object.entries(this.options.aggregations)) {
+        this.addAggregation(path, type);
+      }
+    }
   }
 
   setOutputStream(outputStream: Writable) {
     this.outputStream = outputStream;
     this.isFirstWrite = true;
   }
-
 
   process(chunk: string): void {
     try {
@@ -163,6 +171,7 @@ export class StreamingJsonParser extends EventEmitter {
     if (!this.shouldParseCurrentPath()) return;
 
     value = this.applyTransforms(value, this.currentPath);
+    this.updateAggregations(this.currentPath, value);
 
     if (typeof value === "string") {
       this.statistics.incrementString();
@@ -361,8 +370,18 @@ export class StreamingJsonParser extends EventEmitter {
 
   private calculateComplexity(): number {
     const stats = this.getStats();
-    const totalElements = stats.objectCount + stats.arrayCount + stats.stringCount + stats.numberCount + stats.booleanCount + stats.nullCount;
-    const complexityScore = (stats.depth * 0.2) + (stats.objectCount * 0.3) + (stats.arrayCount * 0.3) + (totalElements * 0.2);
+    const totalElements =
+      stats.objectCount +
+      stats.arrayCount +
+      stats.stringCount +
+      stats.numberCount +
+      stats.booleanCount +
+      stats.nullCount;
+    const complexityScore =
+      stats.depth * 0.2 +
+      stats.objectCount * 0.3 +
+      stats.arrayCount * 0.3 +
+      totalElements * 0.2;
     return Math.min(complexityScore / 100, 1); // Normalize to 0-1 range
   }
 
@@ -393,17 +412,77 @@ export class StreamingJsonParser extends EventEmitter {
     let transformedValue = value;
     for (const { path: transformPath, transform } of this.transforms) {
       if (this.pathMatches(path, transformPath)) {
-        transformedValue = transform(transformedValue, path[path.length - 1], path);
+        transformedValue = transform(
+          transformedValue,
+          path[path.length - 1],
+          path
+        );
       }
     }
     return transformedValue;
   }
 
+  addAggregation(path: string, type: AggregationType): void {
+    this.aggregations.set(path, { path, type, value: 0 });
+  }
+
+  private updateAggregations(path: string[], value: JsonValue): void {
+    const fullPath = path.join(".");
+    for (const [aggPath, aggregation] of this.aggregations) {
+      if (this.pathMatches([fullPath], aggPath)) {
+        this.updateAggregation(aggregation, value);
+      }
+    }
+    this.emitAggregationUpdate();
+  }
+
+  private updateAggregation(aggregation: Aggregation, value: JsonValue): void {
+    if (typeof value !== "number") return;
+
+    switch (aggregation.type) {
+      case "count":
+        aggregation.value++;
+        break;
+      case "sum":
+        aggregation.value += value;
+        break;
+      case "average":
+        if (aggregation.count === undefined) aggregation.count = 0;
+        aggregation.value =
+          (aggregation.value * aggregation.count + value) /
+          (aggregation.count + 1);
+        aggregation.count++;
+        break;
+      case "min":
+        aggregation.value = Math.min(aggregation.value, value);
+        break;
+      case "max":
+        aggregation.value = Math.max(aggregation.value, value);
+        break;
+    }
+  }
+
+  getAggregationResults(): AggregationResult {
+    const results: AggregationResult = {};
+    for (const [path, aggregation] of this.aggregations) {
+      results[path] = aggregation.value;
+    }
+    return results;
+  }
+
+  private emitAggregationUpdate(): void {
+    const results: AggregationResult = {};
+    for (const [path, aggregation] of this.aggregations) {
+      results[path] = aggregation.value;
+    }
+    this.emit("aggregationUpdate", results);
+  }
+
   private pathMatches(currentPath: string[], transformPath: string): boolean {
-    const transformSegments = transformPath.split('.');
+    const transformSegments = transformPath.split(".");
     if (currentPath.length !== transformSegments.length) return false;
-    return transformSegments.every((segment, index) =>
-      segment === '*' || segment === currentPath[index]
+    return transformSegments.every(
+      (segment, index) => segment === "*" || segment === currentPath[index]
     );
   }
 

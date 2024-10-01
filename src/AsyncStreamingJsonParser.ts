@@ -1,4 +1,4 @@
-import { AdaptiveChunkSizingOptions, ParserOptions, Transform, TransformFunction } from "./types";
+import { AggregationType, ParserOptions, TransformFunction } from "./types";
 
 import { StreamingJsonParser } from "./StreamingJsonParser";
 
@@ -62,11 +62,20 @@ export class AsyncStreamingJsonParser extends StreamingJsonParser {
     });
   }
 
-  async addTransform(path: string, transform: TransformFunction): Promise<void> {
+  async addTransform(
+    path: string,
+    transform: TransformFunction
+  ): Promise<void> {
     return new Promise<void>((resolve) => {
       super.addTransform(path, transform);
       resolve();
     });
   }
 
+  async addAggregation(path: string, type: AggregationType): Promise<void> {
+    return new Promise<void>((resolve) => {
+      super.addAggregation(path, type);
+      resolve();
+    });
+  }
 }

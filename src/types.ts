@@ -22,6 +22,7 @@ export interface ParserOptions {
   outputStream?: Writable;
   transforms?: Transform[];
   adaptiveChunkSizing?: AdaptiveChunkSizingOptions;
+  aggregations?: { [key: string]: AggregationType };
 }
 export interface ParserStats {
   depth: number;
@@ -51,18 +52,21 @@ export interface SchemaNode {
 export interface ParserEvents {
   data: (data: JsonValue) => void;
   error: (error: Error) => void;
+  aggregationUpdate: (results: AggregationResult) => void;
   end: () => void;
   chunkProcessed: () => void;
 }
 
-
-export type TransformFunction = (value: JsonValue, key: string, path: string[]) => JsonValue;
+export type TransformFunction = (
+  value: JsonValue,
+  key: string,
+  path: string[]
+) => JsonValue;
 
 export interface Transform {
   path: string;
   transform: TransformFunction;
 }
-
 
 export interface ChunkSizeMetrics {
   processingTime: number;
@@ -77,5 +81,15 @@ export interface AdaptiveChunkSizingOptions {
   targetProcessingTime: number;
 }
 
+export type AggregationType = "count" | "sum" | "average" | "min" | "max";
 
+export interface Aggregation {
+  path: string;
+  type: AggregationType;
+  value: number;
+  count?: number; // For average calculation
+}
 
+export interface AggregationResult {
+  [key: string]: number;
+}

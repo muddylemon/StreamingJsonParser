@@ -24,7 +24,6 @@ In today's data-driven world, we often deal with large amounts of JSON data, esp
 
 By using StreamingJsonParser in your LLM projects, you can focus more on developing and fine-tuning your models, knowing that your JSON data processing is efficient, reliable, and scalable.
 
-
 ## Features
 
 - Streaming JSON parsing (both synchronous and asynchronous)
@@ -37,8 +36,6 @@ By using StreamingJsonParser in your LLM projects, you can focus more on develop
 - Event-based parsing updates
 - Transformation Pipelines for on-the-fly data preparation
 - Adaptive Chunk Sizing for optimized performance
-
-
 
 ## Installation
 
@@ -126,7 +123,7 @@ parseJsonAsync().catch(console.error);
 
 ## API Documentation
 
-### StreamingJsonParser
+### StreamingJsonParser Class
 
 #### Constructor
 
@@ -160,12 +157,12 @@ new StreamingJsonParser(options)
 
 Extends `StreamingJsonParser` with the following differences:
 
-#### Methods
+#### Async Methods
 
 - `process(chunk: string): Promise<void>`: Asynchronously process a chunk of JSON data.
 - `endAsync(): Promise<void>`: Asynchronously end the parsing process.
 
-#### Events
+#### Async Events
 
 In addition to the events from `StreamingJsonParser`:
 
@@ -182,7 +179,6 @@ The `getStats()` method returns an object with the following properties:
 - `numberCount`: Number of numbers parsed.
 - `booleanCount`: Number of booleans parsed.
 - `nullCount`: Number of null values parsed.
-
 
 ## Transformation Pipelines
 
@@ -275,7 +271,115 @@ In this example, the "price" will be converted to a float, the "date" to a Date 
 
 By using Transformation Pipelines, you can streamline your data processing workflow, making it easier to prepare data for AI models or other applications that require specific data formats.
 
+## Streaming Aggregations
 
+StreamingJsonParser now supports real-time aggregations on the data being parsed. This feature is particularly useful for scenarios where you need to perform analytics on large datasets as they're being processed, such as in AI monitoring and logging systems.
+
+### Supported Aggregation Types
+
+- `count`: Counts the number of occurrences
+- `sum`: Calculates the sum of numeric values
+- `average`: Computes the average of numeric values
+- `min`: Finds the minimum numeric value
+- `max`: Finds the maximum numeric value
+
+### Using Aggregations
+
+You can set up aggregations in two ways:
+
+1. During parser initialization:
+
+```javascript
+const parser = new StreamingJsonParser({
+  aggregations: {
+    'data.values': 'average',
+    'data.users': 'count'
+  }
+});
+```
+
+2. After parser initialization:
+
+```javascript
+const parser = new StreamingJsonParser();
+parser.addAggregation('data.values', 'average');
+parser.addAggregation('data.users', 'count');
+```
+
+### Accessing Aggregation Results
+
+You can access aggregation results in two ways:
+
+1. Listen for the `aggregationUpdate` event:
+
+```javascript
+parser.on('aggregationUpdate', (results) => {
+  console.log('Current aggregation results:', results);
+});
+```
+
+2. Get the final results after parsing is complete:
+
+```javascript
+parser.on('end', () => {
+  console.log('Final aggregation results:', parser.getAggregationResults());
+});
+```
+
+### Example
+
+Here's a complete example demonstrating how to use streaming aggregations:
+
+```javascript
+const { StreamingJsonParser } = require("streaming-json-parser");
+
+const parser = new StreamingJsonParser({
+  aggregations: {
+    'data.values': 'average',
+    'data.users': 'count'
+  }
+});
+
+parser.on('data', (data) => {
+  console.log('Parsed data:', data);
+});
+
+parser.on('aggregationUpdate', (results) => {
+  console.log('Aggregation results:', results);
+});
+
+parser.on('end', () => {
+  console.log('Final aggregation results:', parser.getAggregationResults());
+});
+
+// Example JSON data
+const jsonData = [
+  '{"data": {"values": [10, 20, 30], "users": [',
+  '{"name": "Alice"}, {"name": "Bob"}, {"name": "Charlie"}',
+  ']}}',
+];
+
+jsonData.forEach((chunk) => parser.process(chunk));
+parser.end();
+```
+
+This example will output the average of `data.values` and the count of `data.users` as the JSON is parsed.
+
+### Benefits for AI and Large Language Model Applications
+
+Streaming aggregations are particularly valuable when working with AI and large language models:
+
+1. **Real-time Metrics**: Monitor model performance metrics like accuracy, confidence scores, or response times in real-time as you process large datasets.
+
+2. **Resource Usage Tracking**: Keep track of memory usage, API calls, or token consumption as you interact with AI models.
+
+3. **Error Monitoring**: Count errors or exceptions in real-time to quickly identify issues during large-scale processing.
+
+4. **Dataset Statistics**: Compute statistics on your training or evaluation datasets as you stream them for processing.
+
+5. **Adaptive Processing**: Use real-time aggregations to make decisions about model selection, parameter tuning, or processing flow as you handle large volumes of data.
+
+By leveraging streaming aggregations, you can gain valuable insights into your AI processes and large datasets without the need to store and post-process the entire data, saving both time and resources.
 
 ## Adaptive Chunk Sizing
 
@@ -323,8 +427,6 @@ The adaptive chunk sizing algorithm:
 4. **Flexibility**: Works well in diverse environments, from resource-constrained systems to high-performance servers.
 
 By using Adaptive Chunk Sizing, your JSON parsing can automatically optimize itself for the specific data and system it's running on, providing better performance and resource utilization across a wide range of scenarios.
-
-
 
 ## Error Handling
 
