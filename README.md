@@ -137,6 +137,9 @@ new StreamingJsonParser(options)
   - `maxStringLength` (number): Maximum string length (default: Infinity).
   - `allowComments` (boolean): Allow comments in JSON (default: false).
   - `reviver` (Function): Custom reviver function for `JSON.parse`.
+  - `transforms`: (Array): Transforms to perform on matching data
+  - `adaptiveChunkSizing`: (Object): Options for adaptive chunk sizing
+  - `aggregations`: (Object): Aggregations to perform on matching data
 
 #### Methods
 
