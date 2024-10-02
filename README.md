@@ -1,5 +1,26 @@
 # StreamingJsonParser
 
+## Table of Contents
+
+- [Introduction](#introduction)
+- [Why Use StreamingJsonParser?](#why-use-streamingjsonparser)
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+  - [Synchronous Parsing](#synchronous-parsing)
+  - [Asynchronous Parsing](#asynchronous-parsing)
+- [API Documentation](#api-documentation)
+  - [StreamingJsonParser Class](#streamingjsonparser-class)
+  - [AsyncStreamingJsonParser](#asyncstreamingjsonparser)
+  - [ParserStats Object](#parserstats-object)
+- [Transformation Pipelines](#transformation-pipelines)
+- [Streaming Aggregations](#streaming-aggregations)
+- [Adaptive Chunk Sizing](#adaptive-chunk-sizing)
+- [Error Handling](#error-handling)
+- [License](#license)
+- [Contributing](#contributing)
+- [Support](#support)
+
 StreamingJsonParser is a robust and flexible JSON parsing library for Node.js that supports both synchronous and asynchronous parsing of JSON data streams. It's designed to handle large JSON files efficiently by processing them in chunks, making it ideal for scenarios where memory usage is a concern.
 
 > ## Why Use StreamingJsonParser?
