@@ -2,27 +2,27 @@
 
 StreamingJsonParser is a robust and flexible JSON parsing library for Node.js that supports both synchronous and asynchronous parsing of JSON data streams. It's designed to handle large JSON files efficiently by processing them in chunks, making it ideal for scenarios where memory usage is a concern.
 
-## Why Use StreamingJsonParser?
-
-In today's data-driven world, we often deal with large amounts of JSON data, especially when working with Large Language Models (LLMs) and AI applications. Here's why StreamingJsonParser can be particularly useful:
-
-1. **Handling Large Datasets**: When working with LLMs, you might need to process huge JSON files containing training data, model outputs, or configuration settings. StreamingJsonParser allows you to handle these large files without loading the entire dataset into memory at once, preventing out-of-memory errors.
-
-2. **Real-time Processing**: In applications where you're continuously receiving JSON data (e.g., from an API or a data stream), StreamingJsonParser lets you start processing the data as soon as it begins arriving, rather than waiting for the entire payload.
-
-3. **Efficient Memory Usage**: By processing JSON in chunks, this library helps manage memory more efficiently. This is crucial when working with resource-intensive LLMs, where you need to reserve as much memory as possible for the model itself.
-
-4. **Compatibility with Asynchronous Workflows**: The AsyncStreamingJsonParser is particularly useful in Node.js environments where you're likely dealing with asynchronous operations. It integrates well with async/await patterns commonly used in modern JavaScript and TypeScript applications.
-
-5. **Flexible Parsing Options**: Features like comment support, custom revivers, and configurable depth limits make it easier to work with various JSON formats you might encounter in LLM projects, from model configurations to dataset descriptions.
-
-6. **Schema Validation**: When working with LLMs, ensuring the integrity of your input and output data is crucial. The built-in schema validation helps you catch data inconsistencies early in your pipeline.
-
-7. **Performance Insights**: The detailed parsing statistics can help you optimize your data processing pipeline, which is valuable when working with the large datasets typically used in LLM applications.
-
-8. **Error Handling**: Robust error handling is essential when processing large datasets for LLMs. StreamingJsonParser's error events help you identify and address issues in your data without crashing your application.
-
-By using StreamingJsonParser in your LLM projects, you can focus more on developing and fine-tuning your models, knowing that your JSON data processing is efficient, reliable, and scalable.
+> ## Why Use StreamingJsonParser?
+>
+> In today's data-driven world, we often deal with large amounts of JSON data, especially when working with Large Language Models (LLMs) and AI applications. Here's why StreamingJsonParser can be particularly useful:
+>
+> 1. **Handling Large Datasets**: When working with LLMs, you might need to process huge JSON files containing training data, model outputs, or configuration settings. StreamingJsonParser allows you to handle these large files without loading the entire dataset into memory at once, preventing out-of-memory errors.
+>
+> 2. **Real-time Processing**: In applications where you're continuously receiving JSON data (e.g., from an API or a data stream), StreamingJsonParser lets you start processing the data as soon as it begins arriving, rather than waiting for the entire payload.
+>
+> 3. **Efficient Memory Usage**: By processing JSON in chunks, this library helps manage memory more efficiently. This is crucial when working with resource-intensive LLMs, where you need to reserve as much memory as possible for the model itself.
+>
+> 4. **Compatibility with Asynchronous Workflows**: The AsyncStreamingJsonParser is particularly useful in Node.js environments where you're likely dealing with asynchronous operations. It integrates well with async/await patterns commonly used in modern JavaScript and TypeScript applications.
+>
+> 5. **Flexible Parsing Options**: Features like comment support, custom revivers, and configurable depth limits make it easier to work with various JSON formats you might encounter in LLM projects, from model configurations to dataset descriptions.
+>
+> 6. **Schema Validation**: When working with LLMs, ensuring the integrity of your input and output data is crucial. The built-in schema validation helps you catch data inconsistencies early in your pipeline.
+>
+> 7. **Performance Insights**: The detailed parsing statistics can help you optimize your data processing pipeline, which is valuable when working with the large datasets typically used in LLM applications.
+>
+> 8. **Error Handling**: Robust error handling is essential when processing large datasets for LLMs. StreamingJsonParser's error events help you identify and address issues in your data without crashing your application.
+>
+> By using StreamingJsonParser in your LLM projects, you can focus more on developing and fine-tuning your models, knowing that your JSON data processing is efficient, reliable, and scalable.
 
 ## Features
 
@@ -42,7 +42,7 @@ By using StreamingJsonParser in your LLM projects, you can focus more on develop
 Install StreamingJsonParser using npm:
 
 ```bash
-npm install streaming-json-parser
+npm install @lantzwell/streaming-json-parser
 ```
 
 ## Usage
